@@ -22,7 +22,7 @@ export function TxStatusModal({ status, txHash, errorMessage, onClose }: TxStatu
   if (status === "idle") return null;
 
   return (
-    <Dialog open={status !== "idle"} onOpenChange={() => status !== "pending" && onClose()}>
+    <Dialog open onOpenChange={() => status !== "pending" && onClose()}>
       <DialogContent className="sm:max-w-md">
         {status === "pending" && (
           <>
