@@ -5,7 +5,8 @@ import { AppShell } from "@/components/AppShell";
 import { StatCard, StatCardSkeleton } from "@/components/StatsCards";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowUpRight, ArrowDownLeft, Send, Inbox, TrendingUp, Coins, Users } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Send, Inbox, TrendingUp, Coins, Users, Wallet } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function DashboardPage() {
   const { connected, principal, connect } = useWallet();
@@ -27,17 +28,27 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight mb-6">Dashboard</h1>
 
         {!connected ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <h3 className="font-semibold text-lg mb-2">Connect Your Wallet</h3>
-              <p className="text-muted-foreground text-sm max-w-xs mb-4">
-                Connect your Stacks wallet to view your personal tipping stats.
-              </p>
-              <Button onClick={connect} className="gap-2">
-                Connect Wallet
-              </Button>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-5">
+                  <Wallet className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold text-xl mb-2">Connect Your Wallet</h3>
+                <p className="text-muted-foreground text-sm max-w-sm mb-6">
+                  Connect your Stacks wallet to view your personal tipping stats, track sent and received tips, and see your contribution history.
+                </p>
+                <Button onClick={connect} size="lg" className="gap-2 shadow-lg shadow-primary/25">
+                  <Wallet className="h-4 w-4" />
+                  Connect Wallet
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
         ) : (
           <>
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
