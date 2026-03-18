@@ -1,8 +1,49 @@
 import { Tip, truncatePrincipal, microStxToStx, formatStx } from "@/lib/contract";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, MessageSquare } from "lucide-react";
+import { Identicon } from "@/components/Identicon";
+import { ArrowRight, MessageSquare, Copy, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
+
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+function CopyablePrincipal({ principal }: { principal: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(principal);
+    setCopied(true);
+    toast({ title: "Address copied", description: truncatePrincipal(principal, 8) });
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors group/copy"
+      title="Click to copy"
+    >
+      <span>{truncatePrincipal(principal)}</span>
+      {copied ? (
+        <Check className="h-3 w-3 text-green-500" />
+      ) : (
+        <Copy className="h-3 w-3 opacity-0 group-hover/copy:opacity-60 transition-opacity" />
+      )}
+    </button>
+  );
+}
 
 interface ActivityListProps {
   tips: Tip[];
@@ -17,6 +58,7 @@ export function ActivityList({ tips, loading }: ActivityListProps) {
           <Card key={i}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
+                <Skeleton className="h-8 w-8 rounded-full" />
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-4" />
                 <Skeleton className="h-4 w-24" />
@@ -55,29 +97,27 @@ export function ActivityList({ tips, loading }: ActivityListProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: i * 0.04 }}
         >
-          <Card className="hover:shadow-md transition-shadow duration-150">
+          <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-150 group">
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-xs text-muted-foreground">
-                  {truncatePrincipal(tip.sender)}
-                </span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Identicon principal={tip.sender} size={28} />
+                <CopyablePrincipal principal={tip.sender} />
                 <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                <span className="font-mono text-xs text-muted-foreground">
-                  {truncatePrincipal(tip.recipient)}
-                </span>
-                <span className="ml-auto font-mono text-sm font-semibold text-primary whitespace-nowrap">
+                <Identicon principal={tip.recipient} size={28} />
+                <CopyablePrincipal principal={tip.recipient} />
+                <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 text-primary px-2.5 py-0.5 font-mono text-sm font-semibold whitespace-nowrap">
                   {formatStx(microStxToStx(tip.amount))} STX
                 </span>
               </div>
               {tip.message && (
-                <p className="mt-1.5 text-sm text-muted-foreground truncate">
-                  {tip.message}
+                <p className="mt-2 text-sm text-muted-foreground truncate pl-10">
+                  "{tip.message}"
                 </p>
               )}
-              <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+              <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground pl-10">
                 <span>Tip #{tip.id}</span>
                 <span>Block {tip.tipHeight.toLocaleString()}</span>
-                <span>{new Date(tip.timestamp).toLocaleDateString()}</span>
+                <span className="ml-auto">{timeAgo(tip.timestamp)}</span>
               </div>
             </CardContent>
           </Card>
