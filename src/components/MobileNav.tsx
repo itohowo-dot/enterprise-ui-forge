@@ -1,10 +1,11 @@
-import { Home, Send, Activity, BarChart3 } from "lucide-react";
+import { Home, Send, Activity, Trophy, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 
 const items = [
   { title: "Home", url: "/", icon: Home },
   { title: "Send", url: "/send", icon: Send },
   { title: "Activity", url: "/activity", icon: Activity },
+  { title: "Board", url: "/leaderboard", icon: Trophy },
   { title: "Stats", url: "/dashboard", icon: BarChart3 },
 ];
 

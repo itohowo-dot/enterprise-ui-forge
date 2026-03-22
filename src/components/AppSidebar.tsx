@@ -1,4 +1,4 @@
-import { Home, Send, Activity, BarChart3 } from "lucide-react";
+import { Home, Send, Activity, Trophy, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -18,6 +18,7 @@ const navItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Send Tip", url: "/send", icon: Send },
   { title: "Activity", url: "/activity", icon: Activity },
+  { title: "Leaderboard", url: "/leaderboard", icon: Trophy },
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
 ];
 
