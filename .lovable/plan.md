@@ -1,59 +1,44 @@
 
 
-# Mobile Flow Test Results + Feature Additions
+# Testing + Mobile Nav Transitions + Leaderboard Page
 
-## Mobile Tipping Flow (375px) — VERIFIED
+## 1. Verify Existing Features (Manual Testing)
 
-Tested the complete flow end-to-end on 375px viewport:
+Page transitions and Activity search are already implemented. I will navigate between pages and test the search bar using the browser tools during implementation to confirm everything works.
 
-1. **Home page** — Hero section, stats cards, bottom nav all render correctly. No horizontal overflow.
-2. **Wallet connect** — Tapped "Connect Wallet", principal + TESTNET badge appeared in header (truncated properly for mobile width).
-3. **Navigate to Send Tip** — Bottom nav "Send" tab navigated correctly. Form renders in single column with all fields visible.
-4. **Fill form** — Entered recipient (`SP3FBR...`), amount (`1.5`), message. Fee preview updated live showing 0.015 STX fee, 1.515 STX total.
-5. **Submit** — Success modal appeared at bottom of screen with animated green checkmark, "Tip Sent Successfully!" title, transaction hash, and "View on Explorer" + "Done" buttons. Form reset to defaults behind the modal.
+## 2. Directional Page Transitions on Mobile Nav
 
-**Verdict: The mobile tipping flow is fully functional.** No layout issues found.
+**Problem**: Current `PageTransition` always slides y:8→0 regardless of navigation direction. Mobile bottom nav should slide left/right based on which tab is higher/lower in the nav order.
 
----
-
-## Feature Additions Plan
-
-### 1. Page Transition Animations (AnimatePresence)
-
-**Approach**: Wrap `<Routes>` content in framer-motion `AnimatePresence` with a layout component that applies enter/exit animations.
+**Approach**: Create a navigation direction context that tracks the index of the current and previous route. The `PageTransition` component reads this to determine slide direction (left vs right).
 
 **Files**:
-- `src/components/PageTransition.tsx` — new wrapper component with fade+slide animation (opacity 0→1, y 8→0 on enter; reverse on exit)
-- `src/App.tsx` — wrap route elements with `<AnimatePresence>` and use `useLocation()` as key
-- Each page element wrapped in `<PageTransition>`
+- `src/contexts/NavigationDirection.tsx` — new context that stores a `direction` value (`1` for forward, `-1` for back) based on route index comparison
+- `src/components/PageTransition.tsx` — modify to use direction context: `x: direction * 30` for initial, `x: -direction * 30` for exit (with opacity fade)
+- `src/components/MobileNav.tsx` — add Leaderboard nav item
+- `src/components/AppSidebar.tsx` — add Leaderboard nav item
+- `src/App.tsx` — wrap with `NavigationDirectionProvider`, add Leaderboard route
 
-### 2. Custom TipLedger SVG Favicon + OG Meta
+**Route order map**: `/` = 0, `/send` = 1, `/activity` = 2, `/leaderboard` = 3, `/dashboard` = 4. Navigating from index 1→3 = forward (slide left), 3→1 = backward (slide right).
 
-**Approach**: Create an inline SVG favicon (the "TL" logo mark as a blue rounded square) and set proper OG tags.
+## 3. Leaderboard Page
+
+**New file**: `src/pages/Leaderboard.tsx`
+
+**Layout**:
+- Two side-by-side tables (stacked on mobile): "Top Tippers" and "Top Recipients"
+- Each table shows rank, identicon + truncated principal, total volume (STX), tip count
+- Top 3 get gold/silver/bronze rank badges
+- Uses `AppShell` wrapper, skeleton loading states
+
+**Data**: Add `getLeaderboard()` mock function to `src/lib/contract.ts` that returns top 10 senders and top 10 recipients with volume and count data, derived from `CACHED_TIPS`.
 
 **Files**:
-- `public/favicon.svg` — new SVG file: blue rounded-rect with white "TL" text
-- `index.html` — add `<link rel="icon" href="/favicon.svg" type="image/svg+xml">`, update existing OG meta tags with TipLedger-specific title/description (already partially done, just needs favicon link)
+- `src/lib/contract.ts` — add `LeaderboardEntry` interface and `getLeaderboard()` function
+- `src/pages/Leaderboard.tsx` — new page with two ranked tables
+- `src/App.tsx` — add `/leaderboard` route
+- `src/components/MobileNav.tsx` — add Trophy icon for Leaderboard (replace Stats or add 5th item)
+- `src/components/AppSidebar.tsx` — add Leaderboard nav item
 
-### 3. Activity Page Search/Filter Bar
-
-**Approach**: Add a search input + filter dropdown above the activity list. Filter client-side on the current page's tips by address, amount range, or message content.
-
-**Files**:
-- `src/pages/Activity.tsx` — add search state, filter UI (Input + optional dropdown for filter type), pass filtered tips to `ActivityList`
-- Filter logic: case-insensitive match on sender/recipient principals, message text, or amount (e.g., ">1" for tips over 1 STX)
-
-### Technical Details
-
-**Page transitions** use `AnimatePresence` with `mode="wait"` so exit animation completes before enter begins. Each page wrapped in a `motion.div` with:
-```
-initial={{ opacity: 0, y: 8 }}
-animate={{ opacity: 1, y: 0 }}
-exit={{ opacity: 0, y: -8 }}
-transition={{ duration: 0.2 }}
-```
-
-**Favicon SVG** is a simple 32x32 viewBox with a `#2563EB` rounded rect and white bold "TL" text — renders crisply at all sizes.
-
-**Activity search** filters the `tips` array before passing to `ActivityList`. The search input has a debounced `onChange` (300ms) to avoid re-filtering on every keystroke. Resets to page 0 when search query changes.
+**Mobile nav** will have 5 items: Home, Send, Activity, Leaderboard, Stats. Each gets equal space with `justify-around`.
 
