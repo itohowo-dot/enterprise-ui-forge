@@ -132,3 +132,35 @@ export function microStxToStx(micro: number): number {
 export function formatStx(stx: number): string {
   return stx.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 4 });
 }
+
+export interface LeaderboardEntry {
+  principal: string;
+  volume: number; // STX
+  count: number;
+}
+
+export async function getLeaderboard(): Promise<{ topSenders: LeaderboardEntry[]; topRecipients: LeaderboardEntry[] }> {
+  await delay(600);
+  const senderMap = new Map<string, { volume: number; count: number }>();
+  const recipientMap = new Map<string, { volume: number; count: number }>();
+
+  for (const tip of CACHED_TIPS) {
+    const s = senderMap.get(tip.sender) ?? { volume: 0, count: 0 };
+    s.volume += microStxToStx(tip.amount);
+    s.count++;
+    senderMap.set(tip.sender, s);
+
+    const r = recipientMap.get(tip.recipient) ?? { volume: 0, count: 0 };
+    r.volume += microStxToStx(tip.amount);
+    r.count++;
+    recipientMap.set(tip.recipient, r);
+  }
+
+  const toSorted = (map: Map<string, { volume: number; count: number }>): LeaderboardEntry[] =>
+    Array.from(map.entries())
+      .map(([principal, data]) => ({ principal, ...data }))
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 10);
+
+  return { topSenders: toSorted(senderMap), topRecipients: toSorted(recipientMap) };
+}
