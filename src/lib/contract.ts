@@ -137,6 +137,7 @@ export interface LeaderboardEntry {
   principal: string;
   volume: number; // STX
   count: number;
+  rankChange?: number | null; // positive = moved up, negative = moved down, null = new, undefined = n/a
 }
 
 const RANGE_MS: Record<string, number> = {
@@ -145,31 +146,59 @@ const RANGE_MS: Record<string, number> = {
   "30d": 30 * 24 * 60 * 60 * 1000,
 };
 
+function aggregate(tips: Tip[], field: "sender" | "recipient") {
+  const map = new Map<string, { volume: number; count: number }>();
+  for (const tip of tips) {
+    const key = tip[field];
+    const entry = map.get(key) ?? { volume: 0, count: 0 };
+    entry.volume += microStxToStx(tip.amount);
+    entry.count++;
+    map.set(key, entry);
+  }
+  return Array.from(map.entries())
+    .map(([principal, data]) => ({ principal, ...data }))
+    .sort((a, b) => b.volume - a.volume)
+    .slice(0, 10);
+}
+
+function applyRankChanges(
+  current: { principal: string; volume: number; count: number }[],
+  previousTips: Tip[],
+  field: "sender" | "recipient"
+): LeaderboardEntry[] {
+  const prev = aggregate(previousTips, field);
+  const prevRankMap = new Map(prev.map((e, i) => [e.principal, i + 1]));
+  return current.map((entry, i) => {
+    const currentRank = i + 1;
+    const prevRank = prevRankMap.get(entry.principal);
+    return {
+      ...entry,
+      rankChange: prevRank === undefined ? null : prevRank - currentRank,
+    };
+  });
+}
+
 export async function getLeaderboard(range: string = "all"): Promise<{ topSenders: LeaderboardEntry[]; topRecipients: LeaderboardEntry[] }> {
   await delay(600);
-  const cutoff = range === "all" ? 0 : Date.now() - (RANGE_MS[range] ?? 0);
+  const rangeMs = RANGE_MS[range];
+  const cutoff = range === "all" ? 0 : Date.now() - (rangeMs ?? 0);
   const filtered = cutoff ? CACHED_TIPS.filter((t) => t.timestamp >= cutoff) : CACHED_TIPS;
 
-  const senderMap = new Map<string, { volume: number; count: number }>();
-  const recipientMap = new Map<string, { volume: number; count: number }>();
+  const currentSenders = aggregate(filtered, "sender");
+  const currentRecipients = aggregate(filtered, "recipient");
 
-  for (const tip of filtered) {
-    const s = senderMap.get(tip.sender) ?? { volume: 0, count: 0 };
-    s.volume += microStxToStx(tip.amount);
-    s.count++;
-    senderMap.set(tip.sender, s);
-
-    const r = recipientMap.get(tip.recipient) ?? { volume: 0, count: 0 };
-    r.volume += microStxToStx(tip.amount);
-    r.count++;
-    recipientMap.set(tip.recipient, r);
+  if (range === "all" || !rangeMs) {
+    return {
+      topSenders: currentSenders.map((e) => ({ ...e })),
+      topRecipients: currentRecipients.map((e) => ({ ...e })),
+    };
   }
 
-  const toSorted = (map: Map<string, { volume: number; count: number }>): LeaderboardEntry[] =>
-    Array.from(map.entries())
-      .map(([principal, data]) => ({ principal, ...data }))
-      .sort((a, b) => b.volume - a.volume)
-      .slice(0, 10);
+  const prevCutoff = cutoff - rangeMs;
+  const prevFiltered = CACHED_TIPS.filter((t) => t.timestamp >= prevCutoff && t.timestamp < cutoff);
 
-  return { topSenders: toSorted(senderMap), topRecipients: toSorted(recipientMap) };
+  return {
+    topSenders: applyRankChanges(currentSenders, prevFiltered, "sender"),
+    topRecipients: applyRankChanges(currentRecipients, prevFiltered, "recipient"),
+  };
 }
