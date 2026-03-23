@@ -139,12 +139,21 @@ export interface LeaderboardEntry {
   count: number;
 }
 
-export async function getLeaderboard(): Promise<{ topSenders: LeaderboardEntry[]; topRecipients: LeaderboardEntry[] }> {
+const RANGE_MS: Record<string, number> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+};
+
+export async function getLeaderboard(range: string = "all"): Promise<{ topSenders: LeaderboardEntry[]; topRecipients: LeaderboardEntry[] }> {
   await delay(600);
+  const cutoff = range === "all" ? 0 : Date.now() - (RANGE_MS[range] ?? 0);
+  const filtered = cutoff ? CACHED_TIPS.filter((t) => t.timestamp >= cutoff) : CACHED_TIPS;
+
   const senderMap = new Map<string, { volume: number; count: number }>();
   const recipientMap = new Map<string, { volume: number; count: number }>();
 
-  for (const tip of CACHED_TIPS) {
+  for (const tip of filtered) {
     const s = senderMap.get(tip.sender) ?? { volume: 0, count: 0 };
     s.volume += microStxToStx(tip.amount);
     s.count++;
