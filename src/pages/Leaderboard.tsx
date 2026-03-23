@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,8 +6,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Identicon } from "@/components/Identicon";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getLeaderboard, truncatePrincipal, formatStx, type LeaderboardEntry } from "@/lib/contract";
 import { Trophy } from "lucide-react";
+
+const TIME_RANGES = [
+  { value: "24h", label: "24h" },
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "all", label: "All Time" },
+];
+
+const RANGE_SUBTITLES: Record<string, string> = {
+  "24h": "last 24 hours",
+  "7d": "last 7 days",
+  "30d": "last 30 days",
+  "all": "all time",
+};
 
 const RANK_COLORS: Record<number, string> = {
   1: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
@@ -81,17 +97,29 @@ function LeaderboardTable({ title, entries, loading }: { title: string; entries:
 }
 
 export default function Leaderboard() {
+  const [timeRange, setTimeRange] = useState("all");
   const { data, isLoading } = useQuery({
-    queryKey: ["leaderboard"],
-    queryFn: getLeaderboard,
+    queryKey: ["leaderboard", timeRange],
+    queryFn: () => getLeaderboard(timeRange),
   });
 
   return (
     <AppShell>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
-          <p className="text-muted-foreground text-sm mt-1">Top tippers and recipients by total volume</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
+            <p className="text-muted-foreground text-sm mt-1">Top tippers and recipients — {RANGE_SUBTITLES[timeRange]}</p>
+          </div>
+          <Tabs value={timeRange} onValueChange={setTimeRange}>
+            <TabsList>
+              {TIME_RANGES.map((r) => (
+                <TabsTrigger key={r.value} value={r.value} className="text-xs px-3">
+                  {r.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           <LeaderboardTable title="Top Tippers" entries={data?.topSenders ?? []} loading={isLoading} />
